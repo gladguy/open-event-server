@@ -4,14 +4,18 @@ import sys
 import dredd_hooks as hooks
 import requests
 
-# DO NOT REMOVE THIS. This adds the project root for successful imports. Imports from the project directory should be
-# placed only below this
+# DO NOT REMOVE THIS. This adds the project root for successful imports.
+# Imports from the project directory should be placed only below this
 sys.path.insert(1, path.abspath(path.join(__file__, "../..")))
 
 from flask_migrate import Migrate
 from flask import Flask
 from app.models import db
 from app.models.user import OWNER
+from app.models.user_token_blacklist import (
+    UserTokenBlackListTime,
+)  # noqa Workaround for registering unimported model
+from app.api import routes  # noqa Workaround for importing all required models
 
 # imports from factories
 
@@ -65,8 +69,6 @@ from app.factories.message_setting import MessageSettingsFactory
 from app.factories.user_favourite_events import UserFavouriteEventFactory
 
 
-
-
 stash = {}
 api_username = "open_event_test_user@fossasia.org"
 api_password = "fossasia"
@@ -74,10 +76,7 @@ api_uri = "http://localhost:5000/v1/auth/login"
 
 
 def obtain_token():
-    data = {
-        "email": api_username,
-        "password": api_password
-    }
+    data = {"email": api_username, "password": api_password}
     url = api_uri
     response = requests.post(url, json=data)
     response.raise_for_status()
@@ -87,8 +86,13 @@ def obtain_token():
 
 
 def create_super_admin(email, password):
-    user = UserFactory(email=email, password=password, is_super_admin=True,
-                       is_admin=True, is_verified=True)
+    user = UserFactory(
+        email=email,
+        password=password,
+        is_super_admin=True,
+        is_admin=True,
+        is_verified=True,
+    )
     db.session.add(user)
     db.session.commit()
     return user
@@ -129,7 +133,9 @@ def after_each(transaction):
 # ------------------------- Authentication -------------------------
 @hooks.before("Authentication > JWT Authentication > Authenticate and generate token")
 @hooks.before("Authentication > JWT Authentication > Authenticate with remember me")
-@hooks.before("Authentication > JWT Authentication > Authenticate with remember me for mobile")
+@hooks.before(
+    "Authentication > JWT Authentication > Authenticate with remember me for mobile"
+)
 def skip_auth(transaction):
     """
     POST /v1/auth/login
@@ -138,7 +144,9 @@ def skip_auth(transaction):
     """
     transaction['request']['headers']['Authorization'] = ""
     with stash['app'].app_context():
-        user = UserFactory(email="email@example.com", password="password", is_verified=True)
+        user = UserFactory(
+            email="email@example.com", password="password", is_verified=True
+        )
         db.session.add(user)
         db.session.commit()
         print('User Created')
@@ -154,6 +162,7 @@ def skip_token_refresh(transaction):
     :return:
     """
     transaction['skip'] = True
+
 
 # ------------------------- Users -------------------------
 @hooks.before("Users > Users Collection > List All Users")
@@ -221,7 +230,9 @@ def user_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Users > Get User Details for a Notification > Get User Details for a Notification")
+@hooks.before(
+    "Users > Get User Details for a Notification > Get User Details for a Notification"
+)
 def user_notification(transaction):
     """
     GET /notifications/1/user
@@ -239,7 +250,9 @@ def user_notification(transaction):
         db.session.commit()
 
 
-@hooks.before("Users > Get User Details for an Event Invoice > Get User Details for an Event Invoice")
+@hooks.before(
+    "Users > Get User Details for an Event Invoice > Get User Details for an Event Invoice"
+)
 def user_event_invoice(transaction):
     """
     GET /event-invoices/1/user
@@ -252,7 +265,9 @@ def user_event_invoice(transaction):
         db.session.commit()
 
 
-@hooks.before("Users > Get User Details for an Access Code > Get User Details for an Access Code")
+@hooks.before(
+    "Users > Get User Details for an Access Code > Get User Details for an Access Code"
+)
 def user_access_code(transaction):
     """
     GET /access-codes/1/user
@@ -265,7 +280,9 @@ def user_access_code(transaction):
         db.session.commit()
 
 
-@hooks.before("Users > Get User Details for an Email Notification > Get User Details for an Email Notification")
+@hooks.before(
+    "Users > Get User Details for an Email Notification > Get User Details for an Email Notification"
+)
 def user_email_notification(transaction):
     """
     GET /email-notifications/1/user
@@ -278,7 +295,9 @@ def user_email_notification(transaction):
         db.session.commit()
 
 
-@hooks.before("Users > Get User Details for a Discount Code > Get User Details for a Discount Code")
+@hooks.before(
+    "Users > Get User Details for a Discount Code > Get User Details for a Discount Code"
+)
 def user_discount_code(transaction):
     """
     GET /discount-codes/1/user
@@ -336,7 +355,9 @@ def event_post(transaction):
     :return:
     """
     with stash['app'].app_context():
-        RoleFactory(name=OWNER) # TODO: Change to get_or_create in event after_created
+        module = ModuleFactory()
+        db.session.add(module)
+        RoleFactory(name=OWNER)  # TODO: Change to get_or_create in event after_created
         db.session.commit()
 
 
@@ -361,6 +382,8 @@ def event_patch(transaction):
     :return:
     """
     with stash['app'].app_context():
+        module = ModuleFactory()
+        db.session.add(module)
         event = EventFactoryBasic()
         db.session.add(event)
         db.session.commit()
@@ -395,7 +418,9 @@ def evnt_type_event_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Events under an Event Topic > List All Events under an Event Topic")
+@hooks.before(
+    "Events > Events under an Event Topic > List All Events under an Event Topic"
+)
 def evnt_topic_event_get_list(transaction):
     """
     GET /event-topics/1/events
@@ -411,7 +436,9 @@ def evnt_topic_event_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Events under an Event Sub-topic > List All Events under an Event Sub-topic")
+@hooks.before(
+    "Events > Events under an Event Sub-topic > List All Events under an Event Sub-topic"
+)
 def evnt_sub_topic_event_get_list(transaction):
     """
     GET /event-sub-topics/1/events
@@ -473,7 +500,9 @@ def event_ticket(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for a Microlocation > Event Details for a Microlocation")
+@hooks.before(
+    "Events > Get Event for a Microlocation > Event Details for a Microlocation"
+)
 def event_microlocation(transaction):
     """
     GET /microlocations/1/event
@@ -512,7 +541,9 @@ def event_sponsor(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for a Speakers Call > Event Details for a Speakers Call")
+@hooks.before(
+    "Events > Get Event for a Speakers Call > Event Details for a Speakers Call"
+)
 def event_speakers_call(transaction):
     """
     GET /speakers-calls/1/event
@@ -554,7 +585,9 @@ def event_session_types(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for an Event Copyright > Event Details for an Event Copyright")
+@hooks.before(
+    "Events > Get Event for an Event Copyright > Event Details for an Event Copyright"
+)
 def event_event_copyright(transaction):
     """
     GET /event-copyrights/1/event
@@ -586,7 +619,9 @@ def event_tax(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for an Event Invoice > Event Details for an Event Invoice")
+@hooks.before(
+    "Events > Get Event for an Event Invoice > Event Details for an Event Invoice"
+)
 def event_event_invoice(transaction):
     """
     GET /event-invoices/1/event
@@ -599,7 +634,9 @@ def event_event_invoice(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for a Discount Code > Event Details for a Discount Code")
+@hooks.before(
+    "Events > Get Event for a Discount Code > Event Details for a Discount Code"
+)
 def event_discount_code(transaction):
     """
     GET /discount-codes/1/event
@@ -670,7 +707,9 @@ def event_speaker(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for an Email Notification > Event Details for an Email Notification")
+@hooks.before(
+    "Events > Get Event for an Email Notification > Event Details for an Email Notification"
+)
 def event_email_notification(transaction):
     """
     GET /email-notifications/1/event
@@ -722,7 +761,9 @@ def event_faq(transaction):
         db.session.commit()
 
 
-@hooks.before("Events > Get Event for a Stripe Authorization > Event Details for a Stripe Authorization")
+@hooks.before(
+    "Events > Get Event for a Stripe Authorization > Event Details for a Stripe Authorization"
+)
 def event_stripe_authorization(transaction):
     """
     GET /stripe-authorization/1/event
@@ -788,8 +829,7 @@ def feedback_delete(transaction):
         db.session.commit()
 
 
-@hooks.before(
-    "Feedback > Event Feedback Collection > List All Feedbacks for an Event")
+@hooks.before("Feedback > Event Feedback Collection > List All Feedbacks for an Event")
 def feedback_get_list(transaction):
     """
     GET /events/1/Feedbacks
@@ -921,7 +961,9 @@ def invoice_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Invoices > Event Invoice List of an Event > List Event Invoices of an Event")
+@hooks.before(
+    "Invoices > Event Invoice List of an Event > List Event Invoices of an Event"
+)
 def event_event_invoice_get_list(transaction):
     """
     GET /events/1/event-invoices
@@ -1000,7 +1042,9 @@ def microlocation_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Microlocations > Microlocations under an Event > Get List of Microlocations under an Event")
+@hooks.before(
+    "Microlocations > Microlocations under an Event > Get List of Microlocations under an Event"
+)
 def event_microlocation_get_list(transaction):
     """
     GET /events/1/microlocations
@@ -1013,7 +1057,9 @@ def event_microlocation_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Microlocations > Microlocation Details of a Session > Get Microlocation Details of a Session")
+@hooks.before(
+    "Microlocations > Microlocation Details of a Session > Get Microlocation Details of a Session"
+)
 def session_microlocation_get_detail(transaction):
     """
     GET /sessions/1/microlocation
@@ -1062,6 +1108,8 @@ def session_patch(transaction):
     """
     with stash['app'].app_context():
         session = SessionFactory()
+        speakers_call = SpeakersCallFactory()
+        db.session.add(speakers_call)
         db.session.add(session)
         db.session.commit()
 
@@ -1075,6 +1123,8 @@ def session_delete(transaction):
     """
     with stash['app'].app_context():
         session = SessionFactory()
+        speakers_call = SpeakersCallFactory()
+        db.session.add(speakers_call)
         db.session.add(session)
         db.session.commit()
 
@@ -1105,7 +1155,9 @@ def track_session(transaction):
         db.session.commit()
 
 
-@hooks.before("Sessions > List Sessions under a Session Type > List Sessions under a Session Type")
+@hooks.before(
+    "Sessions > List Sessions under a Session Type > List Sessions under a Session Type"
+)
 def session_type_session(transaction):
     """
     GET /session-types/1/sessions
@@ -1118,7 +1170,9 @@ def session_type_session(transaction):
         db.session.commit()
 
 
-@hooks.before("Sessions > List Sessions under a Microlocation > List Sessions under a Microlocation")
+@hooks.before(
+    "Sessions > List Sessions under a Microlocation > List Sessions under a Microlocation"
+)
 def microlocation_session(transaction):
     """
     GET /microlations/1/sessions
@@ -1259,6 +1313,8 @@ def speaker_patch(transaction):
     """
     with stash['app'].app_context():
         speaker = SpeakerFactory()
+        speakers_call = SpeakersCallFactory()
+        db.session.add(speakers_call)
         db.session.add(speaker)
         db.session.commit()
 
@@ -1272,6 +1328,8 @@ def speaker_delete(transaction):
     """
     with stash['app'].app_context():
         speaker = SpeakerFactory()
+        speakers_call = SpeakersCallFactory()
+        db.session.add(speakers_call)
         db.session.add(speaker)
         db.session.commit()
 
@@ -1302,7 +1360,9 @@ def sessions_speakers(transaction):
         db.session.commit()
 
 
-@hooks.before("Speakers > List Speaker Profiles for a User > List Speaker Profiles for a User")
+@hooks.before(
+    "Speakers > List Speaker Profiles for a User > List Speaker Profiles for a User"
+)
 def user_speakers(transaction):
     """
     GET /users/1/speakers
@@ -1316,7 +1376,9 @@ def user_speakers(transaction):
 
 
 # ------------------------- Social Links -------------------------
-@hooks.before("Social Links > Social Links Get Collection > List All Social Links under an Event")
+@hooks.before(
+    "Social Links > Social Links Get Collection > List All Social Links under an Event"
+)
 def social_link_get_list(transaction):
     """
     GET /events/1/social-links
@@ -1383,6 +1445,7 @@ def social_link_delete(transaction):
 
 # ------------------------- Speakers Calls -------------------------
 
+
 @hooks.before("Speakers Calls > Speakers Call Collection > Create Speakers Call")
 def speakers_call_post(transaction):
     """
@@ -1432,7 +1495,9 @@ def speakers_call_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Speakers Calls > Get Speakers Call for an Event > Get Speakers Call Details for an Event")
+@hooks.before(
+    "Speakers Calls > Get Speakers Call for an Event > Get Speakers Call Details for an Event"
+)
 def speakers_call_event(transaction):
     """
     GET /events/1/speakers-call
@@ -1644,7 +1709,9 @@ def ticket_event(transaction):
         db.session.commit()
 
 
-@hooks.before("Tickets > List Tickets under a Ticket-tag > List Tickets under a Ticket-tag")
+@hooks.before(
+    "Tickets > List Tickets under a Ticket-tag > List Tickets under a Ticket-tag"
+)
 def tikcet_tag_ticket(transaction):
     """
     GET /tikcet-tags/1/tickets
@@ -1657,7 +1724,9 @@ def tikcet_tag_ticket(transaction):
         db.session.commit()
 
 
-@hooks.before("Tickets > List Tickets for an Access Code > List Tickets for an Access Code")
+@hooks.before(
+    "Tickets > List Tickets for an Access Code > List Tickets for an Access Code"
+)
 def access_code_ticket(transaction):
     """
     GET /access-codes/1/tickets
@@ -1670,7 +1739,9 @@ def access_code_ticket(transaction):
         db.session.commit()
 
 
-@hooks.before("Tickets > List Tickets for a Discount Code > List Tickets for a Discount Code")
+@hooks.before(
+    "Tickets > List Tickets for a Discount Code > List Tickets for a Discount Code"
+)
 def discount_code_ticket(transaction):
     """
     GET /discount-codes/1/tickets
@@ -1695,6 +1766,7 @@ def get_tickets_from_order(transaction):
         order.identifier = "7201904e"
         db.session.add(order)
         db.session.commit()
+
 
 # ------------------------- Ticket Fees -------------------------
 @hooks.before("Ticket Fees > Ticket Fees Collection > List Ticket Fees")
@@ -1815,7 +1887,9 @@ def ticket_tag_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Ticket Tags > List Ticket Tags under an Event > List Ticket Tags under an Event")
+@hooks.before(
+    "Ticket Tags > List Ticket Tags under an Event > List Ticket Tags under an Event"
+)
 def ticket_tag_event(transaction):
     """
     GET /events/1/ticket-tags
@@ -1828,7 +1902,9 @@ def ticket_tag_event(transaction):
         db.session.commit()
 
 
-@hooks.before("Ticket Tags > List Ticket Tags for a Ticket > List Ticket Tags for a Ticket")
+@hooks.before(
+    "Ticket Tags > List Ticket Tags for a Ticket > List Ticket Tags for a Ticket"
+)
 def ticket_tag_ticket(transaction):
     """
     GET /tickets/1/ticket-tags
@@ -1910,6 +1986,52 @@ def attendee_receipts(transaction):
         order.identifier = 'xyz789'
         order.status = 'completed'
         db.session.add(order)
+        db.session.commit()
+
+
+@hooks.before(
+    "Attendees > List Attendees under an order > List All Attendees under an order"
+)
+def get_attendees_from_order(transaction):
+    """
+    GET /v1/orders/{identifier}/attendees
+    :param transaction:
+    :return:
+    """
+    with stash['app'].app_context():
+        order = OrderFactory()
+        order.identifier = "7201904e"
+        db.session.add(order)
+        db.session.commit()
+
+
+@hooks.before(
+    "Attendees > List Attendees under an event > List All Attendees under an event"
+)
+def get_attendees_from_event(transaction):
+    """
+    GET /v1/events/{event_id}/attendees
+    :param transaction:
+    :return:
+    """
+    with stash['app'].app_context():
+        event = EventFactoryBasic()
+        db.session.add(event)
+        db.session.commit()
+
+
+@hooks.before(
+    "Attendees > List Attendees under a ticket > List All Attendees under a ticket"
+)
+def get_attendees_from_ticket(transaction):
+    """
+    GET /v1/tickets/{ticket_id}/attendees
+    :param transaction:
+    :return:
+    """
+    with stash['app'].app_context():
+        ticket = TicketFactory()
+        db.session.add(ticket)
         db.session.commit()
 
 
@@ -2047,7 +2169,9 @@ def notification_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Notifications > Notification Detail with Actions > Notification Detail with Actions")
+@hooks.before(
+    "Notifications > Notification Detail with Actions > Notification Detail with Actions"
+)
 def notification_get_detail_with_actions(transaction):
     """
     GET /notifications/1?include=notification_actions
@@ -2102,7 +2226,9 @@ def notification_delete(transaction):
 
 
 # ------------------------- Email Notifications -------------------------
-@hooks.before("Email Notifications > Email Notifications Admin Collection > List All Email Notifications")
+@hooks.before(
+    "Email Notifications > Email Notifications Admin Collection > List All Email Notifications"
+)
 def email_notification_get_admin_list(transaction):
     """
     GET /email-notifications
@@ -2115,7 +2241,9 @@ def email_notification_get_admin_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Email Notifications > Email Notifications Collection > List All Email Notifications")
+@hooks.before(
+    "Email Notifications > Email Notifications Collection > List All Email Notifications"
+)
 def email_notification_get_list(transaction):
     """
     GET /users/2/email-notifications
@@ -2128,7 +2256,9 @@ def email_notification_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Email Notifications > Email Notifications Collection Post > Create Email Notificaiton")
+@hooks.before(
+    "Email Notifications > Email Notifications Collection Post > Create Email Notificaiton"
+)
 def email_notification_post(transaction):
     """
     POST /email-notifications
@@ -2141,7 +2271,9 @@ def email_notification_post(transaction):
         db.session.commit()
 
 
-@hooks.before("Email Notifications > Email Notification Detail > Email Notification Detail")
+@hooks.before(
+    "Email Notifications > Email Notification Detail > Email Notification Detail"
+)
 def email_notification_get_detail(transaction):
     """
     GET /email-notifications/1
@@ -2154,7 +2286,9 @@ def email_notification_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Email Notifications > Email Notification Detail > Update Email Notification")
+@hooks.before(
+    "Email Notifications > Email Notification Detail > Update Email Notification"
+)
 def email_notification_patch(transaction):
     """
     PATCH /email-notifications/1
@@ -2167,7 +2301,9 @@ def email_notification_patch(transaction):
         db.session.commit()
 
 
-@hooks.before("Email Notifications > Email Notification Detail > Delete Email Notification")
+@hooks.before(
+    "Email Notifications > Email Notification Detail > Delete Email Notification"
+)
 def email_notification_delete(transaction):
     """
     DELETE /email-notifications/1
@@ -2259,7 +2395,6 @@ def user_email_delete(transaction):
         user_email = UserEmailFactory()
         db.session.add(user_email)
         db.session.commit()
-
 
 
 # ------------------------- Image Size -------------------------
@@ -2435,7 +2570,9 @@ def service_patch(transaction):
 
 
 # ------------------------- Event Role Permission -------------------------
-@hooks.before("Event Role Permission > Event Role Permission Collection > List Event Role Permissions")
+@hooks.before(
+    "Event Role Permission > Event Role Permission Collection > List Event Role Permissions"
+)
 def event_role_permission_list(transaction):
     """
     GET /event-role-permissions
@@ -2443,6 +2580,8 @@ def event_role_permission_list(transaction):
     :return:
     """
     transaction['skip'] = True
+
+
 #   TODO: This is breaking the build, we need to repair it eventually.
 #   with stash['app'].app_context():
 #       event_role_permission = EventRolePermissionsFactory()
@@ -2450,7 +2589,9 @@ def event_role_permission_list(transaction):
 #       db.session.commit()
 
 
-@hooks.before("Event Role Permission > Event Role Permission Details > Get Event Role Permission Details")
+@hooks.before(
+    "Event Role Permission > Event Role Permission Details > Get Event Role Permission Details"
+)
 def event_role_permission_detail(transaction):
     """
     GET /event-role-permissions/1
@@ -2458,6 +2599,8 @@ def event_role_permission_detail(transaction):
     :return:
     """
     transaction['skip'] = True
+
+
 #   TODO: This is breaking the build, we need to repair it eventually.
 #   with stash['app'].app_context():
 #       event_role_permission = EventRolePermissionsFactory()
@@ -2465,7 +2608,9 @@ def event_role_permission_detail(transaction):
 #       db.session.commit()
 
 
-@hooks.before("Event Role Permission > Event Role Permission Details > Update Event Role Permission")
+@hooks.before(
+    "Event Role Permission > Event Role Permission Details > Update Event Role Permission"
+)
 def event_role_permission_patch(transaction):
     """
     PATCH /event-role-permissions/1
@@ -2473,6 +2618,8 @@ def event_role_permission_patch(transaction):
     :return:
     """
     transaction['skip'] = True
+
+
 #   TODO: This is breaking the build, we need to repair it eventually.
 #   with stash['app'].app_context():
 #       event_role_permission = EventRolePermissionsFactory()
@@ -2695,7 +2842,9 @@ def modules_patch(transaction):
 
 
 # ------------------------- Discount Codes -------------------------
-@hooks.before("Discount Codes > Event Discount Code Collection > List All Event Discount Codes")
+@hooks.before(
+    "Discount Codes > Event Discount Code Collection > List All Event Discount Codes"
+)
 def event_discount_code_get_list(transaction):
     """
     GET /discount-codes
@@ -2714,7 +2863,9 @@ def event_discount_code_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > Event Discount Code Collection > Create Event Discount Code")
+@hooks.before(
+    "Discount Codes > Event Discount Code Collection > Create Event Discount Code"
+)
 def event_discount_code_post(transaction):
     """
     POST /discount-codes
@@ -2722,6 +2873,8 @@ def event_discount_code_post(transaction):
     :return:
     """
     transaction['skip'] = True
+
+
 #   TODO: This is breaking the build, we need to repair it eventually.
 #   with stash['app'].app_context():	+    transaction['skip'] = True
 #        event = EventFactoryBasic()
@@ -2729,7 +2882,9 @@ def event_discount_code_post(transaction):
 #        db.session.commit()
 
 
-@hooks.before("Discount Codes > Ticket Discount Code Collection > Create Ticket Discount Code")
+@hooks.before(
+    "Discount Codes > Ticket Discount Code Collection > Create Ticket Discount Code"
+)
 def ticket_discount_code_post(transaction):
     """
     POST /discount-codes
@@ -2743,7 +2898,9 @@ def ticket_discount_code_post(transaction):
     #     db.session.commit()
 
 
-@hooks.before("Discount Codes > Ticket Discount Code Collection > List All Ticket Discount Codes")
+@hooks.before(
+    "Discount Codes > Ticket Discount Code Collection > List All Ticket Discount Codes"
+)
 def ticket_discount_code_get_list(transaction):
     """
     GET /events/1/discount-codes
@@ -2811,7 +2968,9 @@ def discount_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > Get Discount Code Detail using the code > Get Discount Code Detail")
+@hooks.before(
+    "Discount Codes > Get Discount Code Detail using the code > Get Discount Code Detail"
+)
 def discount_code_get_detail_using_code(transaction):
     """
     GET events/1/discount-codes/DC101
@@ -2830,7 +2989,9 @@ def discount_code_get_detail_using_code(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > List Discount Codes under a User > List All Discount Codes under a User")
+@hooks.before(
+    "Discount Codes > List Discount Codes under a User > List All Discount Codes under a User"
+)
 def user_discount_code_get_list(transaction):
     """
     GET /users/1/discount-codes
@@ -2847,7 +3008,9 @@ def user_discount_code_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > List Discount Codes under a Ticket > List All Discount Codes under a Ticket")
+@hooks.before(
+    "Discount Codes > List Discount Codes under a Ticket > List All Discount Codes under a Ticket"
+)
 def get_discount_codes_under_ticket(transaction):
     """
     GET /tickets/1/discount-codes
@@ -2860,7 +3023,9 @@ def get_discount_codes_under_ticket(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > Get Discount Code Detail of an Event > Get Discount Code Detail of an Event")
+@hooks.before(
+    "Discount Codes > Get Discount Code Detail of an Event > Get Discount Code Detail of an Event"
+)
 def event_discount_code_get_detail(transaction):
     """
     GET /events/1/discount-code
@@ -2877,8 +3042,10 @@ def event_discount_code_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Discount Codes > Get Discount Code Detail of an Event Invoice > "
-              "Get Discount Code Detail of an Event Invoice")
+@hooks.before(
+    "Discount Codes > Get Discount Code Detail of an Event Invoice > "
+    "Get Discount Code Detail of an Event Invoice"
+)
 def event_invoice_discount_code_get_detail(transaction):
     """
     GET /event-invoices/1/discount-code
@@ -2966,7 +3133,9 @@ def access_code_get_detail_using_code(transaction):
         db.session.commit()
 
 
-@hooks.before("Access Codes > Get Access Codes for an Event > List All Access Codes of an Event")
+@hooks.before(
+    "Access Codes > Get Access Codes for an Event > List All Access Codes of an Event"
+)
 def event_access_code_get_list(transaction):
     """
     GET /events/1/access-codes
@@ -2979,7 +3148,9 @@ def event_access_code_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Access Codes > Get Access Codes for a User > List All Access Codes for a User")
+@hooks.before(
+    "Access Codes > Get Access Codes for a User > List All Access Codes for a User"
+)
 def user_access_code_get_list(transaction):
     """
     GET /users/1/access-codes
@@ -2992,7 +3163,9 @@ def user_access_code_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Access Codes > Get Access Codes for a Ticket > List All Access Codes for a Ticket")
+@hooks.before(
+    "Access Codes > Get Access Codes for a Ticket > List All Access Codes for a Ticket"
+)
 def ticket_access_code_get_list(transaction):
     """
     GET /tickets/1/access-codes
@@ -3058,7 +3231,9 @@ def custom_form_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom Forms > Event Custom Form Collection > List All Custom Forms for an Event")
+@hooks.before(
+    "Custom Forms > Event Custom Form Collection > List All Custom Forms for an Event"
+)
 def custom_form_get_list(transaction):
     """
     GET /events/1/custom-forms
@@ -3124,8 +3299,7 @@ def faq_delete(transaction):
         db.session.commit()
 
 
-@hooks.before(
-    "FAQ > Event FAQ Collection > List All FAQs for an Event")
+@hooks.before("FAQ > Event FAQ Collection > List All FAQs for an Event")
 def faq_get_list(transaction):
     """
     GET /events/1/faqs
@@ -3481,7 +3655,9 @@ def event_event_topic_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Event Topics > Event Topic of a Sub Topic > Event Topic Details of a Sub Topic")
+@hooks.before(
+    "Event Topics > Event Topic of a Sub Topic > Event Topic Details of a Sub Topic"
+)
 def sub_topic_event_topic_get_detail(transaction):
     """
     GET /sub-topics/1/event-topic
@@ -3495,7 +3671,9 @@ def sub_topic_event_topic_get_detail(transaction):
 
 
 # ------------------------- Event Sub Topics -------------------------
-@hooks.before("Event Sub Topics > Event Sub Topics Collection Get > List All Event Sub Topics")
+@hooks.before(
+    "Event Sub Topics > Event Sub Topics Collection Get > List All Event Sub Topics"
+)
 def event_sub_topic_get_list(transaction):
     """
     GET /event-topics/1/event-sub-topics
@@ -3508,7 +3686,9 @@ def event_sub_topic_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Event Sub Topics > Event Sub Topics Collection Post > Create Event Sub Topic")
+@hooks.before(
+    "Event Sub Topics > Event Sub Topics Collection Post > Create Event Sub Topic"
+)
 def event_sub_topic_post(transaction):
     """
     POST /event-sub-topics
@@ -3560,7 +3740,9 @@ def event_sub_topic_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Event Sub Topics > Event Sub Topic of an Event > Event Sub Topic Details of an Event")
+@hooks.before(
+    "Event Sub Topics > Event Sub Topic of an Event > Event Sub Topic Details of an Event"
+)
 def event_event_sub_topic_get_detail(transaction):
     """
     GET /events/1/event-sub-topic
@@ -3577,7 +3759,8 @@ def event_event_sub_topic_get_detail(transaction):
 
 
 @hooks.before(
-    "Event Sub Topics > Event Sub Topic of Custom Placeholder > Event Sub Topic Details of Custom Placeholder")
+    "Event Sub Topics > Event Sub Topic of Custom Placeholder > Event Sub Topic Details of Custom Placeholder"
+)
 def custom_placeholder_sub_topic_get_detail(transaction):
     """
     GET /custom-placeholders/1/event-sub-topic
@@ -3594,7 +3777,9 @@ def custom_placeholder_sub_topic_get_detail(transaction):
 
 
 # ------------------------- Custom Placeholders -------------------------
-@hooks.before("Custom Placeholders > Custom Placeholders Collection > List All Event Custom Placeholders")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholders Collection > List All Event Custom Placeholders"
+)
 def custom_placeholder_get_list(transaction):
     """
     GET /custom-placeholders
@@ -3607,7 +3792,9 @@ def custom_placeholder_get_list(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom Placeholders > Custom Placeholders Collection > Create Custom Placeholder")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholders Collection > Create Custom Placeholder"
+)
 def custom_placeholder_post(transaction):
     """
     POST /custom-placeholders
@@ -3620,8 +3807,9 @@ def custom_placeholder_post(transaction):
         db.session.commit()
 
 
-
-@hooks.before("Custom Placeholders > Custom Placeholder Details > Custom Placeholder Details")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholder Details > Custom Placeholder Details"
+)
 def custom_placeholder_get_detail(transaction):
     """
     GET /custom-placeholders/1
@@ -3634,7 +3822,9 @@ def custom_placeholder_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom Placeholders > Custom Placeholder Details > Update Custom Placeholder")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholder Details > Update Custom Placeholder"
+)
 def custom_placeholder_patch(transaction):
     """
     PATCH /custom-placeholders/1
@@ -3647,7 +3837,9 @@ def custom_placeholder_patch(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom Placeholders > Custom Placeholder Details > Delete Custom Placeholder")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholder Details > Delete Custom Placeholder"
+)
 def custom_placeholder_delete(transaction):
     """
     DELETE /custom-placeholders/1
@@ -3660,8 +3852,10 @@ def custom_placeholder_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom Placeholders > Custom Placeholder Details of Event Sub-topic >"
-              " Custom Placeholder Details of Event Sub-topic")
+@hooks.before(
+    "Custom Placeholders > Custom Placeholder Details of Event Sub-topic >"
+    " Custom Placeholder Details of Event Sub-topic"
+)
 def event_sub_topic_custom_placeholder_get_detail(transaction):
     """
     GET /event-sub-topics/1/custom-placeholder
@@ -3731,7 +3925,9 @@ def user_permission_delete(transaction):
 
 
 # ------------------------- Stripe Authorizations -------------------------
-@hooks.before("Stripe Authorization > Stripe Authorization Collection > Create Stripe Authorization")
+@hooks.before(
+    "Stripe Authorization > Stripe Authorization Collection > Create Stripe Authorization"
+)
 def stripe_authorization_post(transaction):
     """
     POST /stripe-authorization
@@ -3741,7 +3937,9 @@ def stripe_authorization_post(transaction):
     transaction['skip'] = True
 
 
-@hooks.before("Stripe Authorization > Stripe Authorization Details > Get Stripe Authorization")
+@hooks.before(
+    "Stripe Authorization > Stripe Authorization Details > Get Stripe Authorization"
+)
 def stripe_authorization_get_detail(transaction):
     """
     GET /stripe-authorization/1
@@ -3754,7 +3952,9 @@ def stripe_authorization_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Stripe Authorization > Stripe Authorization Details > Update Stripe Authorization")
+@hooks.before(
+    "Stripe Authorization > Stripe Authorization Details > Update Stripe Authorization"
+)
 def stripe_authorization_patch(transaction):
     """
     PATCH /stripe-authorization/1
@@ -3767,7 +3967,9 @@ def stripe_authorization_patch(transaction):
         db.session.commit()
 
 
-@hooks.before("Stripe Authorization > Stripe Authorization Details > Delete Stripe Authorization")
+@hooks.before(
+    "Stripe Authorization > Stripe Authorization Details > Delete Stripe Authorization"
+)
 def stripe_authorization_delete(transaction):
     """
     DELETE /stripe-authorization/1
@@ -3780,7 +3982,9 @@ def stripe_authorization_delete(transaction):
         db.session.commit()
 
 
-@hooks.before("Stripe Authorization > Stripe Authorization for an Event > Get Stripe Authorization Details of an Event")
+@hooks.before(
+    "Stripe Authorization > Stripe Authorization for an Event > Get Stripe Authorization Details of an Event"
+)
 def event_stripe_authorization_get_detail(transaction):
     """
     GET /events/1/stripe-authorization
@@ -3795,7 +3999,8 @@ def event_stripe_authorization_get_detail(transaction):
 
 # ------------------------- Export -------------------------
 @hooks.before(
-    "Event Export > Start Event Export as Zip > Start a Task to Export an Event as Zip")
+    "Event Export > Start Event Export as Zip > Start a Task to Export an Event as Zip"
+)
 def event_export_post(transaction):
     """
     :param transaction:
@@ -3808,7 +4013,8 @@ def event_export_post(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Event Export as iCal file > Start a Task to Export an Event as iCal event")
+    "Event Export > Start Event Export as iCal file > Start a Task to Export an Event as iCal event"
+)
 def event_export_ical_get(transaction):
     """
     :param transaction:
@@ -3821,7 +4027,8 @@ def event_export_ical_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Event Export as xCalendar > Start a Task to Export an Event as xCalendar")
+    "Event Export > Start Event Export as xCalendar > Start a Task to Export an Event as xCalendar"
+)
 def event_export_xcal_get(transaction):
     """
     :param transaction:
@@ -3834,7 +4041,8 @@ def event_export_xcal_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Event Export as Pentabarf XML > Start a Task to Export an Event as Pentabarf XML")
+    "Event Export > Start Event Export as Pentabarf XML > Start a Task to Export an Event as Pentabarf XML"
+)
 def event_export_pentabarf_get(transaction):
     """
     :param transaction:
@@ -3847,7 +4055,8 @@ def event_export_pentabarf_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Orders Export as CSV > Start a Task to Export Orders of an Event as CSV")
+    "Event Export > Start Orders Export as CSV > Start a Task to Export Orders of an Event as CSV"
+)
 def event_orders_export_csv_get(transaction):
     """
     :param transaction:
@@ -3860,7 +4069,8 @@ def event_orders_export_csv_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Orders Export as PDF > Start a Task to Export Orders of an Event as PDF")
+    "Event Export > Start Orders Export as PDF > Start a Task to Export Orders of an Event as PDF"
+)
 def event_orders_export_pdf_get(transaction):
     """
     :param transaction:
@@ -3873,7 +4083,8 @@ def event_orders_export_pdf_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Attendees Export as CSV > Start a Task to Export Attendees of an Event as CSV")
+    "Event Export > Start Attendees Export as CSV > Start a Task to Export Attendees of an Event as CSV"
+)
 def event_attendees_export_csv_get(transaction):
     """
     :param transaction:
@@ -3886,7 +4097,8 @@ def event_attendees_export_csv_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Attendees Export as PDF > Start a Task to Export Attendees of an Event as PDF")
+    "Event Export > Start Attendees Export as PDF > Start a Task to Export Attendees of an Event as PDF"
+)
 def event_attendees_export_pdf_get(transaction):
     """
     :param transaction:
@@ -3899,7 +4111,8 @@ def event_attendees_export_pdf_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Sessions Export as CSV > Start a Task to Export Sessions of an Event as CSV")
+    "Event Export > Start Sessions Export as CSV > Start a Task to Export Sessions of an Event as CSV"
+)
 def event_sessions_export_csv_get(transaction):
     """
     :param transaction:
@@ -3912,7 +4125,8 @@ def event_sessions_export_csv_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Speakers Export as CSV > Start a Task to Export Speakers of an Event as CSV")
+    "Event Export > Start Speakers Export as CSV > Start a Task to Export Speakers of an Event as CSV"
+)
 def event_speakers_export_csv_get(transaction):
     """
     :param transaction:
@@ -3925,7 +4139,8 @@ def event_speakers_export_csv_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Sessions Export as PDF > Start a Task to Export Sessions of an Event as PDF")
+    "Event Export > Start Sessions Export as PDF > Start a Task to Export Sessions of an Event as PDF"
+)
 def event_sessions_export_pdf_get(transaction):
     """
     :param transaction:
@@ -3938,7 +4153,8 @@ def event_sessions_export_pdf_get(transaction):
 
 
 @hooks.before(
-    "Event Export > Start Speakers Export as PDF > Start a Task to Export Speakers of an Event as PDF")
+    "Event Export > Start Speakers Export as PDF > Start a Task to Export Speakers of an Event as PDF"
+)
 def event_speakers_export_pdf_get(transaction):
     """
     :param transaction:
@@ -3951,8 +4167,7 @@ def event_speakers_export_pdf_get(transaction):
 
 
 # ------------------------- Import -------------------------
-@hooks.before(
-    "Event Import > Start Event Import > Start a Task to Import an Event")
+@hooks.before("Event Import > Start Event Import > Start a Task to Import an Event")
 def event_import_post(transaction):
     """
     :param transaction:
@@ -3962,8 +4177,7 @@ def event_import_post(transaction):
 
 
 # ------------------------- Celery Task -------------------------
-@hooks.before(
-    "Celery Tasks > Task Details > Get Task Result")
+@hooks.before("Celery Tasks > Task Details > Get Task Result")
 def celery_task_get(transaction):
     """
 
@@ -3975,7 +4189,10 @@ def celery_task_get(transaction):
 
 # ------------------------- Event Statistics -------------------------
 
-@hooks.before("Event Statistics > Event Statistics Details > Show Event Statistics General")
+
+@hooks.before(
+    "Event Statistics > Event Statistics Details > Show Event Statistics General"
+)
 def event_statistics_general_get(transaction):
     """
     GET /events/1/general-statistics
@@ -3990,7 +4207,10 @@ def event_statistics_general_get(transaction):
 
 # ------------------------- Order Statistics -------------------------
 
-@hooks.before("Order Statistics > Order Statistics Details By Event > Show Order Statistics By Event")
+
+@hooks.before(
+    "Order Statistics > Order Statistics Details By Event > Show Order Statistics By Event"
+)
 def order_statistics_event_get(transaction):
     """
     GET /events/1/order-statistics
@@ -4003,7 +4223,9 @@ def order_statistics_event_get(transaction):
         db.session.commit()
 
 
-@hooks.before("Order Statistics > Order Statistics Details By Ticket > Show Order Statistics By Ticket")
+@hooks.before(
+    "Order Statistics > Order Statistics Details By Ticket > Show Order Statistics By Ticket"
+)
 def order_statistics_ticket_get(transaction):
     """
     GET /tickets/1/order-statistics
@@ -4017,6 +4239,7 @@ def order_statistics_ticket_get(transaction):
 
 
 # ------------------------- Orders -------------------------
+
 
 @hooks.before("Orders > Orders Collection > List All Orders")
 def orders_get_collection(transaction):
@@ -4038,7 +4261,9 @@ def create_order(transaction):
     transaction['skip'] = True
 
 
-@hooks.before("Orders > Create Order with on site Attendees > Create Order with on site Attendees")
+@hooks.before(
+    "Orders > Create Order with on site Attendees > Create Order with on site Attendees"
+)
 def create_order_with_on_site_attendee(transaction):
     """
     GET /orders?onsite=true
@@ -4145,20 +4370,6 @@ def get_event_from_order(transaction):
         db.session.commit()
 
 
-@hooks.before("Attendees > List Attendees under an order > List All Attendees under an order")
-def get_attendees_from_order(transaction):
-    """
-    GET /v1/orders/{identifier}/attendees
-    :param transaction:
-    :return:
-    """
-    with stash['app'].app_context():
-        order = OrderFactory()
-        order.identifier = "7201904e"
-        db.session.add(order)
-        db.session.commit()
-
-
 @hooks.before("Change Password > Reset Forgotten Password > Reset Password from Token")
 def reset_password_patch(transaction):
     """
@@ -4173,9 +4384,22 @@ def reset_password_patch(transaction):
         db.session.commit()
 
 
+@hooks.before("Email Verification > Verify Email > Verify the email via auth token")
+def verify_email_from_token(transaction):
+    """
+    POST /v1/auth/verify-email
+    :param transaction:
+    :return:
+    """
+    transaction['skip'] = True
+
+
 # ------------------------- Custom System Role -------------------------
 
-@hooks.before("Custom System Roles > Custom System Roles Collections > List All Custom System Roles")
+
+@hooks.before(
+    "Custom System Roles > Custom System Roles Collections > List All Custom System Roles"
+)
 def custom_system_roles_get_list(transaction):
     """
     GET /custom-system-roles
@@ -4201,7 +4425,9 @@ def custom_system_role_get_detail(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom System Roles > Custom System Roles Details > Update Custom System Role")
+@hooks.before(
+    "Custom System Roles > Custom System Roles Details > Update Custom System Role"
+)
 def custom_system_role_patch(transaction):
     """
     PATCH /custom-system-roles/1
@@ -4214,7 +4440,9 @@ def custom_system_role_patch(transaction):
         db.session.commit()
 
 
-@hooks.before("Custom System Roles > Custom System Roles Details > Delete Custom Systen Role")
+@hooks.before(
+    "Custom System Roles > Custom System Roles Details > Delete Custom Systen Role"
+)
 def custom_system_role_delete(transaction):
     """
     DELETE /custom-system-roles/1
@@ -4229,7 +4457,8 @@ def custom_system_role_delete(transaction):
 
 @hooks.before(
     "Custom System Roles > Get Custom System Role Details for a Panel Permission > "
-    "Get Custom System Role Details for a Panel Permission")
+    "Get Custom System Role Details for a Panel Permission"
+)
 def custom_system_roles_panel_permission(transaction):
     """
     GET /panel-permissions/1/custom-system-roles
@@ -4245,7 +4474,9 @@ def custom_system_roles_panel_permission(transaction):
 # ------------------------- Panel Permission -------------------------
 
 
-@hooks.before("Panel Permissions > Panel Permissions Collections > List All Panel Permissions")
+@hooks.before(
+    "Panel Permissions > Panel Permissions Collections > List All Panel Permissions"
+)
 def panel_permission_get_list(transaction):
     """
     GET /panel-permissions
@@ -4299,7 +4530,8 @@ def panel_permission_delete(transaction):
 
 @hooks.before(
     "Panel Permissions > Get Panel Permission Details for a Custom System Role > "
-    "Get Panel Permission Details for a Custom System Role")
+    "Get Panel Permission Details for a Custom System Role"
+)
 def panel_permissions_custom_system_role(transaction):
     """
     GET /custom-system-roles/1/panel-permissions
@@ -4311,9 +4543,13 @@ def panel_permissions_custom_system_role(transaction):
         PanelPermissionFactory()
         db.session.commit()
 
+
 # ------------------------- User Favourite Events -------------------------
 
-@hooks.before("Favourite Events > Favourite Events Collection > List All Favourite Events")
+
+@hooks.before(
+    "Favourite Events > Favourite Events Collection > List All Favourite Events"
+)
 def favourite_events_list_get(transaction):
     """
     GET /user-favourite-events
@@ -4367,6 +4603,7 @@ def favourite_event_delete(transaction):
 
 # ------------------------- Admin Statistics -------------------------
 
+
 @hooks.before("Admin Statistics > Event Statistics Details > Show Event Statistics")
 def event_statistics_get(transaction):
     """
@@ -4380,7 +4617,9 @@ def event_statistics_get(transaction):
         db.session.commit()
 
 
-@hooks.before("Admin Statistics > Event Types Statistics Details > Show Event Types Statistics")
+@hooks.before(
+    "Admin Statistics > Event Types Statistics Details > Show Event Types Statistics"
+)
 def event_type_statistics_get(transaction):
     """
     GET /admin/statistics/event-types
@@ -4393,7 +4632,9 @@ def event_type_statistics_get(transaction):
         db.session.commit()
 
 
-@hooks.before("Admin Statistics > Event Topics Statistics Details > Show Event Topics Statistics")
+@hooks.before(
+    "Admin Statistics > Event Topics Statistics Details > Show Event Topics Statistics"
+)
 def event_topic_statistics_get(transaction):
     """
     GET /admin/statistics/event-topics

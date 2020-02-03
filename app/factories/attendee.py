@@ -2,15 +2,16 @@ import factory
 
 import app.factories.common as common
 from app.factories.event import EventFactoryBasic
-from app.models.ticket_holder import db, TicketHolder
+from app.factories.order import OrderFactory
+from app.factories.ticket import TicketFactory
+from app.models.ticket_holder import TicketHolder, db
 
 
-class AttendeeFactory(factory.alchemy.SQLAlchemyModelFactory):
+class AttendeeFactoryBase(factory.alchemy.SQLAlchemyModelFactory):
     class Meta:
         model = TicketHolder
         sqlalchemy_session = db.session
 
-    event = factory.RelatedFactory(EventFactoryBasic)
     firstname = common.string_
     lastname = common.string_
     email = common.email_
@@ -22,3 +23,11 @@ class AttendeeFactory(factory.alchemy.SQLAlchemyModelFactory):
     pdf_url = common.url_
     event_id = 1
     ticket_id = None
+    order_id = None
+    modified_at = common.date_
+
+
+class AttendeeFactory(AttendeeFactoryBase):
+    event = factory.RelatedFactory(EventFactoryBasic)
+    ticket = factory.RelatedFactory(TicketFactory)
+    order = factory.RelatedFactory(OrderFactory)
